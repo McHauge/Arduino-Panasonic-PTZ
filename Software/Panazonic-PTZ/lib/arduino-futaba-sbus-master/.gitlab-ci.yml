@@ -1,0 +1,10 @@
+image: debian:latest
+
+before_script:
+  - sed -i 's/deb.debian.org/172.16.0.19:9999/' /etc/apt/sources.list
+  - sed -i 's/security.debian.org/172.16.0.19:9999\/debian-security/' /etc/apt/sources.list
+  - apt-get update -y && apt-get install -y arduino-core make
+
+futaba_sbus:
+  script:
+    - make compile

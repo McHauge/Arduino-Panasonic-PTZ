@@ -1,38 +1,60 @@
 //  ||=======================================================||
-//  ||                 Frontrow - Panasonic PTZ              ||
-//  ||                        Rev 0.1                        ||
-//  ||              Made By: Andreas Hauge Thomsen           ||
+//  ||                Frontrow - Panasonic PTZ               ||
+//  ||                       Rev 0.1                         ||
+//  ||             Made By: Andreas Hauge Thomsen            ||
 //  ||=======================================================||
-//  ||                 Main Program & Setup                  ||
+//  ||         To Provide control for Panasonic PTZ          ||
+//  ||      via an DJI Force Pro or a S-Bus Controller       ||
 //  ||=======================================================||
 
-/** 
- * @Author: McHauge 
- * @Date: 2020-04-29 05:03:25 
- * @Desc: Main Goal: Provide a way to directly control of a Panasonic PTZ Head with an Arduino and an X+Y encoder
- */
+
 
 // Debug Mode:
 #define debug
 
-// Other Defines:
-#define ENCODER_USE_INTERRUPTS // Force the use off interupts
-#define ENCODER_OPTIMIZE_INTERRUPTS // Optimize interupts when using dual interupt pins
-
 // Include Libraies:
-#include "Arduino.h"
-#include <Encoder.h>
+#include "Arduino.h"				// Default Arduino 
+#include "FutabaSBUS.h"			// Provides S-Bus Capability
+#include "boards.h"					// Defines Board Specific Peramators
+#include "AW-UE150-Codes.h"	// Provides RS422 Serial Packages 
 
-// Change these pin numbers to the pins connected to your encoder.
-//   Best Performance: both pins have interrupt capability
-//   Good Performance: only the first pin has interrupt capability
-//   Low Performance:  neither pin has interrupt capability
-//   avoid using pins with LEDs attached
-//	 https://www.pjrc.com/teensy/td_libs_Encoder.html?utm_source=platformio&utm_medium=piohome
 
-// Create Encoders:
-Encoder encoderHori(5, 6);
-Encoder encoderVert(7, 8);
+// ||=======================================================||
+// ||                    S-Bus Functions                    ||
+// ||=======================================================||
+
+// Setup S-Bus:
+FutabaSBUS sbus;
+
+// Delivers Channel Data For Use:
+void dataReceived(ChannelData channels) {
+  // do something with the data
+	#ifdef debug
+		Serial.print("CH1: ");
+		Serial.print(channels.channels.channel1);
+		Serial.print(" CH2: ");
+		Serial.print(channels.channels.channel2);
+		Serial.print(" CH3: ");
+		Serial.print(channels.channels.channel3);
+		Serial.print(" CH4: ");
+		Serial.println(channels.channels.channel4);
+	#endif
+}
+
+// Notify When a Failsafe Orcures:
+void failsafe() {
+	#ifdef debug
+		Serial.println("Failsafe");
+	#endif
+}
+
+// Notify When a Frame Error Orcures:
+void frameError() {
+	#ifdef debug
+	 	Serial.println("Frame Error");
+	#endif
+}
+
 
 
 
@@ -41,41 +63,24 @@ Encoder encoderVert(7, 8);
 // ||=======================================================||
 
 void setup() {
-  Serial.begin(9600);
-  Serial.println("TwoKnobs Encoder Test:");
+	Serial.begin(115200);	// Start Debug Serial Port (USB)
+
+	RS422.begin(9600);	// Start RS422 Serial Port
+
+	sbus.begin(sbusPort, false);						// Start S-Bus Serial Port
+	sbus.attachDataReceived(dataReceived);	// Attach Channel Data
+	sbus.attachFailSafe(failsafe);					// Attach Failsafe Flag
+	sbus.attachFrameError(frameError);			// Attach Frame Error Flag
 
 }
 
-// Define Encoder Start Pos:
-long posEncoderHori  = -999;
-long posEncoderVert = -999;
+
 
 // ||=======================================================||
 // ||                       Main Loop                       ||
 // ||=======================================================||
 
 void loop() {
-
-  long newEncoderHori, newEncoderVert;
-  newEncoderHori = encoderHori.read();
-  newEncoderVert = encoderVert.read();
-  
-	if (newEncoderHori != posEncoderHori || newEncoderVert != posEncoderVert) {
-    Serial.print("Left = ");
-    Serial.print(newEncoderHori);
-    Serial.print(", Right = ");
-    Serial.print(newEncoderVert);
-    Serial.println();
-    posEncoderHori = newEncoderHori;
-    posEncoderVert = newEncoderVert;
-  }
-  
-	// if a character is sent from the serial monitor,
-  // reset both back to zero.
-  if (Serial.available()) {
-    Serial.read();
-    Serial.println("Reset both knobs to zero");
-    encoderHori.write(0);
-    encoderVert.write(0);
-  }
+	sbus.receive();  // Update S-Bus, need to call receive() regularly. Can be done by a timer interrupt too.
 }
+

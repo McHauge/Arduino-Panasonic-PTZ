@@ -1,0 +1,15 @@
+ChannelData	KEYWORD1
+FutabaSBUS	KEYWORD1
+
+attachDataReceived	KEYWORD2
+attachFrameError	KEYWORD2
+attachFailSafe	KEYWORD2
+attachRawData	KEYWORD2
+receive	KEYWORD2
+send	KEYWORD2
+passThrough	KEYWORD2
+updateChannels	KEYWORD2
+getChannels	KEYWORD2
+attachPassThroughHandler	KEYWORD2
+
+SBUS_BAUD_RATE	LITERAL1
