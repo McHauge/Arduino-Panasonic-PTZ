@@ -8,11 +8,5 @@
 			"path": "."
 		}
 	],
-	"settings": {
-		"files.associations": {
-			"initializer_list": "cpp",
-			"xhash": "cpp",
-			"xutility": "cpp"
-		}
-	}
+	"settings": {}
 }

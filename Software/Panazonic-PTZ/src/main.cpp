@@ -10,18 +10,18 @@
 
 
 // Debug Mode:
-#define debug
-// #define debugRaw 	// Debug Raw sBus values
-// #define debugAnalog	// Degug Calculated Analog Value
-// #define debugAxis	// Debug Axis Direction
-#define debugChange		// Debug Change in Maped Values
+// #define debug				// General Debug
+// #define debugRaw 			// Debug Raw sBus values
+// #define debugAnalog			// Degug Calculated Analog Value
+// #define debugAxis			// Debug Axis Direction
+// #define debugChange			// Debug Change in Maped Values
+#define debugControlRS422		// Debug Control Commands sent over RS422
 
 // Include Libraies:
 #include "Arduino.h"			// Default Arduino 
 #include "FutabaSBUS.h"			// Provides S-Bus Capability
 #include <TaskScheduler.h>		// Adds Task Scheduler Support
 #include "boards.h"				// Defines Board Specific Peramators
-#include "AW-UE150-Codes.h"	    // Provides RS422 Serial and HTTP IP Packages 
 
 
 
@@ -35,6 +35,10 @@ int sBusCh[16];
 // SBUS Status states
 bool failsafeState = true;
 bool sBusError = true;
+
+// Chose Interface RS422 or IP/HTTP
+#define RS422_Control
+// #define IP_Control 
 
 // Define analog calibrations varibles
 int analogCenter = 1010;
@@ -67,6 +71,16 @@ String tiltDir = "Stop";
 String zoomDir = "Stop";
 String focusDir = "Stop";
 
+// PTZ Bytes
+byte pan1 = '5';
+byte pan2 = '0'; 
+byte tilt1 = '5';
+byte tilt2 = '0';
+byte zoom1 = '5';
+byte zoom2 = '0';
+byte focus1 = '5';
+byte focus2 = '0';
+	
 // Callback methods prototypes for timers
 void t1Callback();
 void t2Callback();
@@ -75,6 +89,9 @@ void t2Callback();
 Task t1(10, TASK_FOREVER, &t1Callback);
 Task t2(100, TASK_FOREVER, &t2Callback);
 Scheduler runner;
+
+// My Imports
+#include "AW-UE150-Codes.h"	    // Provides RS422 Serial and HTTP IP Packages 
 
 
 
@@ -268,6 +285,29 @@ void frameError() {
 
 
 // ||=======================================================||
+// ||                     PTZ Functions                     ||
+// ||=======================================================||
+
+void ptzf_actions_rs422() {
+
+    byte pt_packet[] = {0x23, 'P', 'T', 'Z', pan1, pan2, tilt1, tilt2, 0x0D};
+    RS422.write(pt_packet, sizeof(pt_packet));
+
+    byte z_packet[] = {0x23, 'Z', zoom1, zoom2, 0x0D};
+    RS422.write(z_packet, sizeof(z_packet));
+
+    byte f_packet[] = {0x23, 'F', focus1, focus2, 0x0D};
+    RS422.write(f_packet, sizeof(f_packet));
+
+	#ifdef debugControlRS422
+		Serial.println("#PTZ" + panMap + tiltMap);
+	#endif
+
+}
+
+
+
+// ||=======================================================||
 // ||                      Main Tasks                       ||
 // ||=======================================================||
 
@@ -282,7 +322,12 @@ void t1Callback() {
 void t2Callback() {
 
   	if (detectChange() == true) {
-		actions();
+	#ifdef RS422_Control
+		ptzf_actions_rs422();
+	#endif
+	#ifdef IP_Control
+		/* Code */
+	#endif
 	}
 	else {
 		/* Code */
@@ -297,7 +342,12 @@ void t2Callback() {
 
 void setup() {
 	Serial.begin(115200);	// Start Debug Serial Port (USB)
-	RS422.begin(9600);	    // Start RS422 Serial Port
+	#ifdef RS422_Control
+		RS422.begin(9600);	    // Start RS422 Serial Port
+	#endif
+	#ifdef IP_Control
+		/* Code */
+	#endif
 
 	sbus.begin(sbusPort, false);				// Start S-Bus Serial Port
 	sbus.attachDataReceived(dataReceived);	    // Attach Channel Data
