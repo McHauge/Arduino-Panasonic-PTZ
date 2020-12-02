@@ -11,7 +11,7 @@
 //
 #ifdef MEGA2560
 	#define RS422 Serial1 		// Use Serial 1 for RS422 (pin: 18 & 19)
-	#define sbusPort Serial2  // Use Serial 2 for S-Bus (pin: 16 & 17)
+	#define sbusPort Serial2  	// Use Serial 2 for S-Bus (pin: 16 & 17)
 #endif
 
 //
@@ -19,7 +19,7 @@
 //
 #ifdef DUE
 	#define RS422 Serial1 		// Use Serial 1 for RS422 (pin: 18 & 19)
-	#define sbusPort Serial2  // Use Serial 2 for S-Bus (pin: 16 & 17)
+	#define sbusPort Serial2  	// Use Serial 2 for S-Bus (pin: 16 & 17)
 #endif
 
 //
@@ -27,5 +27,5 @@
 //
 #ifdef TEENSY36
 	#define RS422 Serial6 		// Use Serial 6 for RS422 (pin: 47 & 48)
-	#define sbusPort Serial5  // Use Serial 5 for S-Bus (pin: 34 & 33)
+	#define sbusPort Serial5  	// Use Serial 5 for S-Bus (pin: 34 & 33)
 #endif

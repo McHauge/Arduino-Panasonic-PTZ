@@ -6,11 +6,13 @@
 		{
 			"name": "Panazonic-PTZ",
 			"path": "."
-		},
-		{
-			"name": "200430-055317-leonardo",
-			"path": "..\\..\\..\\..\\Dokumenter\\PlatformIO\\Projects\\200430-055317-leonardo"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.associations": {
+			"initializer_list": "cpp",
+			"xhash": "cpp",
+			"xutility": "cpp"
+		}
+	}
 }

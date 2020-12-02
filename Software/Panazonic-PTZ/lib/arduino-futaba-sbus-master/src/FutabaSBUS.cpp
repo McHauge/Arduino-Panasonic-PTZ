@@ -28,7 +28,12 @@ FutabaSBUS::FutabaSBUS() : serial(NULL), baud_rate(SBUS_BAUD_RATE), pass_through
 FutabaSBUS::FutabaSBUS(HardwareSerial& serialPort, bool passThrough, uint32_t baud, bool fastDecode) : serial(&serialPort), baud_rate(baud), pass_through(passThrough), offset(0),
                                                                                   failsafe(false), frame_error(false), fast_decode(fastDecode), data_received(NULL), raw_data_callback(NULL), 
                                                                                   frame_error_callback(NULL), failsafe_callback(NULL), passthrough_handler(NULL) {
+        #ifdef DUE // Use this only on the Arduino Due
+        serialPort.begin(baud_rate);
+        #endif
+        #ifndef DUE // Use this on everything else
         serialPort.begin(baud_rate, SERIAL_8E2);
+        #endif
 }
 
 #ifdef SoftwareSerial_h
@@ -44,7 +49,12 @@ void FutabaSBUS::begin(HardwareSerial& serialPort, bool passThrough, uint32_t ba
         baud_rate = baud;
         fast_decode = fastDecode;
         
+        #ifdef DUE // Use this only on the Arduino Due
+        serialPort.begin(baud_rate);
+        #endif
+        #ifndef DUE // Use this on everything else
         serialPort.begin(baud_rate, SERIAL_8E2);
+        #endif
         serial = &serialPort;
 }
 
