@@ -13,11 +13,13 @@
 #define debug
 // #define debugRaw 	// Debug Raw sBus values
 // #define debugAnalog	// Degug Calculated Analog Value
-#define debugAxis		// Debug Axis Direction
+// #define debugAxis	// Debug Axis Direction
+#define debugChange		// Debug Change in Maped Values
 
 // Include Libraies:
 #include "Arduino.h"			// Default Arduino 
 #include "FutabaSBUS.h"			// Provides S-Bus Capability
+#include <TaskScheduler.h>		// Adds Task Scheduler Support
 #include "boards.h"				// Defines Board Specific Peramators
 #include "AW-UE150-Codes.h"	    // Provides RS422 Serial and HTTP IP Packages 
 
@@ -30,6 +32,10 @@
 // Number of sbus channels
 int sBusCh[16];
 
+// SBUS Status states
+bool failsafeState = true;
+bool sBusError = true;
+
 // Define analog calibrations varibles
 int analogCenter = 1010;
 int analogMax = 1800;
@@ -38,15 +44,22 @@ int analogDeadzone = 50;
 int rangeMap = 50;
 
 // Define axis
-int pan = 0; 		// Channel 1
-int tilt = 0;		// Channel 2
-int zoom = 0;		// Channel 3
-int focus = 0;		// Channel 4
+int pan = 0; 			// Channel 1
+int tilt = 0;			// Channel 2
+int zoom = 0;			// Channel 3
+int focus = 0;			// Channel 4
 
-int panMap = 0; 	// Channel 1
-int tiltMap = 0;	// Channel 2
-int zoomMap = 0;	// Channel 3
-int focusMap = 0;	// Channel 4
+// Store Mapped Axis Values
+int panMap = 0; 		// Channel 1
+int tiltMap = 0;		// Channel 2
+int zoomMap = 0;		// Channel 3
+int focusMap = 0;		// Channel 4
+
+// Store Last Axis Direction
+int panMapOld = 0; 		// Channel 1
+int tiltMapOld = 0;		// Channel 2
+int zoomMapOld = 0;		// Channel 3
+int focusMapOld = 0;	// Channel 4
 
 // Store Axis Direction
 String panDir = "Stop";
@@ -54,12 +67,22 @@ String tiltDir = "Stop";
 String zoomDir = "Stop";
 String focusDir = "Stop";
 
+// Callback methods prototypes for timers
+void t1Callback();
+void t2Callback();
+
+// Create Tasks
+Task t1(10, TASK_FOREVER, &t1Callback);
+Task t2(100, TASK_FOREVER, &t2Callback);
+Scheduler runner;
+
 
 
 // ||=======================================================||
 // ||                       Functions                       ||
 // ||=======================================================||
 
+// Cap max and min analog value acording to settings
 int setMaxMin(int axis) {
 	if (axis <= (analogCenter-analogMin)*(-1)) { return analogCenter-analogMin*(-1); }
 	else if (axis >=analogMax-analogCenter) { return analogMax-analogCenter; }
@@ -97,6 +120,7 @@ void getAnalog() {
 
 }
 
+// Get the axis direction
 String getDirection(int axis, String negative, String positive) {
 	if (axis < 0) {	
 		return negative; 
@@ -110,6 +134,7 @@ String getDirection(int axis, String negative, String positive) {
 	return "0";
 }
 
+// Map analog axis to match speed settings on PTZ
 int getMap(int axis, String negative, String positive) {
 	if (axis < 0) {	
 		return map(axis, (analogCenter-analogMin)*(-1), 0, 1, 49);
@@ -149,6 +174,35 @@ void findCommand() {
 	#endif
 }
 
+// Detect if analog axis has moved since last message was send
+bool detectChange() {
+	bool changed = false;
+
+	if (panMapOld != panMap) { changed = true; }
+	if (tiltMapOld != tiltMap) { changed = true; }
+	if (zoomMapOld != zoomMap) { changed = true; }
+	if (focusMapOld != focusMap) { changed = true; }
+
+	#ifdef debugChange
+	if (changed == true) {
+		Serial.print("Update Detected: | ");
+		Serial.print(" Pan: " + panDir + " " + panMap + " " + panMapOld + " |");
+		Serial.print(" Tilt: " + tiltDir + " " + tiltMap + " " + tiltMapOld + " |");
+		Serial.print(" Zoom: " + zoomDir + " " + zoomMap + " " + zoomMapOld + " |");
+		Serial.println(" Focus: " + focusDir + " " + focusMap + " " + focusMapOld + " |");
+	}
+	#endif
+
+	panMapOld = panMap;
+	tiltMapOld = tiltMap;
+	zoomMapOld = zoomMap;
+	focusMapOld = focusMap;
+
+	if (changed == false) {	return false; }	
+	else if (changed == true) {	return true; }
+	return false;	
+}
+
 
 
 // ||=======================================================||
@@ -160,6 +214,10 @@ FutabaSBUS sbus;
 
 // Delivers Channel Data For Use:
 void dataReceived(ChannelData data) {
+	// Set sBUS state
+	failsafeState = false;
+	sBusError = false;
+
     // Save channels to a short varible    
     sBusCh[0] = data.channels.channel1;
     sBusCh[1] = data.channels.channel2;
@@ -189,14 +247,11 @@ void dataReceived(ChannelData data) {
 		Serial.print(" CH4: ");
 		Serial.println(sBusCh[3]);
 	#endif
-
-	getAnalog();
-	findCommand();
-	actions();
 }
 
 // Notify When a Failsafe Orcures:
 void failsafe() {
+	failsafeState = true;
 	#ifdef debug
 		Serial.println("Failsafe");
 	#endif
@@ -204,9 +259,34 @@ void failsafe() {
 
 // Notify When a Frame Error Orcures:
 void frameError() {
+	sBusError = true;
 	#ifdef debug
 	 	Serial.println("Frame Error");
 	#endif
+}
+
+
+
+// ||=======================================================||
+// ||                      Main Tasks                       ||
+// ||=======================================================||
+
+// Update/Recive Sbus Data
+void t1Callback() {
+	sbus.receive();  // Update S-Bus, need to call receive() regularly. Can be done by a timer interrupt too.
+	getAnalog();
+	findCommand();
+}
+
+// Send Camera Data
+void t2Callback() {
+
+  	if (detectChange() == true) {
+		actions();
+	}
+	else {
+		/* Code */
+	}
 }
 
 
@@ -223,6 +303,24 @@ void setup() {
 	sbus.attachDataReceived(dataReceived);	    // Attach Channel Data
 	sbus.attachFailSafe(failsafe);				// Attach Failsafe Flag
 	sbus.attachFrameError(frameError);			// Attach Frame Error Flag
+	
+	// Start Scheduler
+	runner.init();
+	Serial.println("Initialized scheduler");
+	
+	// Add Tasks
+	runner.addTask(t1);
+	Serial.println("added t1");	
+	runner.addTask(t2);
+	Serial.println("added t2");
+
+	delay(5000);
+
+	// Enable Tasks	
+	t1.enable();
+	Serial.println("Enabled t1");
+	t2.enable();
+	Serial.println("Enabled t2");
 
 	Serial.println("Ready");
 }
@@ -234,6 +332,6 @@ void setup() {
 // ||=======================================================||
 
 void loop() {
-	sbus.receive();  // Update S-Bus, need to call receive() regularly. Can be done by a timer interrupt too.
+	runner.execute(); // Update Runner
 }
 
