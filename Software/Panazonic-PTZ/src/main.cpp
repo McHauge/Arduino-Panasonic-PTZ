@@ -125,14 +125,14 @@ void getAnalog() {
 
     // Print result in debug mode
 	#ifdef debugAnalog
-		Serial.print("Pan: ");
-		Serial.print(pan);
-		Serial.print(" Tilt: ");
-		Serial.print(tilt);
-		Serial.print(" Zoom: ");
-		Serial.print(zoom);
-		Serial.print(" Focus: ");
-		Serial.println(focus);
+		DEBUG.print("Pan: ");
+		DEBUG.print(pan);
+		DEBUG.print(" Tilt: ");
+		DEBUG.print(tilt);
+		DEBUG.print(" Zoom: ");
+		DEBUG.print(zoom);
+		DEBUG.print(" Focus: ");
+		DEBUG.println(focus);
 	#endif
 
 }
@@ -184,10 +184,10 @@ void findCommand() {
 
     // Print result in debug mode
 	#ifdef debugAxis
-		Serial.print("Pan: " + panDir + " " + panMap);
-		Serial.print(" Tilt: " + tiltDir + " " + tiltMap);
-		Serial.print(" Zoom: " + zoomDir + " " + zoomMap);
-		Serial.println(" Focus: " + focusDir + " " + focusMap);
+		DEBUG.print("Pan: " + panDir + " " + panMap);
+		DEBUG.print(" Tilt: " + tiltDir + " " + tiltMap);
+		DEBUG.print(" Zoom: " + zoomDir + " " + zoomMap);
+		DEBUG.println(" Focus: " + focusDir + " " + focusMap);
 	#endif
 }
 
@@ -202,11 +202,11 @@ bool detectChange() {
 
 	#ifdef debugChange
 	if (changed == true) {
-		Serial.print("Update Detected: | ");
-		Serial.print(" Pan: " + panDir + " " + panMap + " " + panMapOld + " |");
-		Serial.print(" Tilt: " + tiltDir + " " + tiltMap + " " + tiltMapOld + " |");
-		Serial.print(" Zoom: " + zoomDir + " " + zoomMap + " " + zoomMapOld + " |");
-		Serial.println(" Focus: " + focusDir + " " + focusMap + " " + focusMapOld + " |");
+		DEBUG.print("Update Detected: | ");
+		DEBUG.print(" Pan: " + panDir + " " + panMap + " " + panMapOld + " |");
+		DEBUG.print(" Tilt: " + tiltDir + " " + tiltMap + " " + tiltMapOld + " |");
+		DEBUG.print(" Zoom: " + zoomDir + " " + zoomMap + " " + zoomMapOld + " |");
+		DEBUG.println(" Focus: " + focusDir + " " + focusMap + " " + focusMapOld + " |");
 	}
 	#endif
 
@@ -255,14 +255,14 @@ void dataReceived(ChannelData data) {
 
     // Print result in debug mode
 	#ifdef debugRaw
-		Serial.print("CH1: ");
-		Serial.print(sBusCh[0]);
-		Serial.print(" CH2: ");
-		Serial.print(sBusCh[1]);
-		Serial.print(" CH3: ");
-		Serial.print(sBusCh[2]);
-		Serial.print(" CH4: ");
-		Serial.println(sBusCh[3]);
+		DEBUG.print("CH1: ");
+		DEBUG.print(sBusCh[0]);
+		DEBUG.print(" CH2: ");
+		DEBUG.print(sBusCh[1]);
+		DEBUG.print(" CH3: ");
+		DEBUG.print(sBusCh[2]);
+		DEBUG.print(" CH4: ");
+		DEBUG.println(sBusCh[3]);
 	#endif
 }
 
@@ -270,7 +270,7 @@ void dataReceived(ChannelData data) {
 void failsafe() {
 	failsafeState = true;
 	#ifdef debug
-		Serial.println("Failsafe");
+		DEBUG.println("Failsafe");
 	#endif
 }
 
@@ -278,7 +278,7 @@ void failsafe() {
 void frameError() {
 	sBusError = true;
 	#ifdef debug
-	 	Serial.println("Frame Error");
+	 	DEBUG.println("Frame Error");
 	#endif
 }
 
@@ -300,7 +300,7 @@ void ptzf_actions_rs422() {
     RS422.write(f_packet, sizeof(f_packet));
 
 	#ifdef debugControlRS422
-		Serial.println("#PTZ" + panMap + tiltMap);
+		DEBUG.println("#PTZ" + panMap + tiltMap);
 	#endif
 
 }
@@ -341,7 +341,7 @@ void t2Callback() {
 // ||=======================================================||
 
 void setup() {
-	Serial.begin(115200);	// Start Debug Serial Port (USB)
+	DEBUG.begin(115200);	// Start Debug Serial Port (USB)
 	#ifdef RS422_Control
 		RS422.begin(9600);	    // Start RS422 Serial Port
 	#endif
@@ -356,23 +356,23 @@ void setup() {
 	
 	// Start Scheduler
 	runner.init();
-	Serial.println("Initialized scheduler");
+	DEBUG.println("Initialized scheduler");
 	
 	// Add Tasks
 	runner.addTask(t1);
-	Serial.println("added t1");	
+	DEBUG.println("added t1");	
 	runner.addTask(t2);
-	Serial.println("added t2");
+	DEBUG.println("added t2");
 
 	delay(5000);
 
 	// Enable Tasks	
 	t1.enable();
-	Serial.println("Enabled t1");
+	DEBUG.println("Enabled t1");
 	t2.enable();
-	Serial.println("Enabled t2");
+	DEBUG.println("Enabled t2");
 
-	Serial.println("Ready");
+	DEBUG.println("Ready");
 }
 
 
