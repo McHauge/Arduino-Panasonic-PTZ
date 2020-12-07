@@ -334,6 +334,21 @@ void t2Callback() {
 	}
 }
 
+void readSerial() {
+	#ifdef RS422_Control
+		// read from RS422, send to Debug port:
+		if (RS422.available()) {
+			int inByte = RS422.read();
+			DEBUG.print(inByte, DEC);
+		}
+	#endif
+
+	#ifdef IP_Control
+		/* Code */
+	#endif
+
+}
+
 
 
 // ||=======================================================||
@@ -383,5 +398,6 @@ void setup() {
 
 void loop() {
 	runner.execute(); // Update Runner
+	readSerial(); // Read Serial
 }
 
