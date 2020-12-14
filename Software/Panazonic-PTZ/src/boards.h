@@ -32,3 +32,12 @@
 	#define RS422 Serial6 		// Use Serial 6 for RS422 (pin: 47 & 48)
 	#define sbusPort Serial5  	// Use Serial 5 for S-Bus (pin: 34 & 33)
 #endif
+
+//
+// M5Stack Core ESP32
+//
+#ifdef M5CORE
+	#define DEBUG Serial 		// Use USB Serial for DEBUG
+	#define RS422 Serial1 		// Use Serial 6 for RS422 (pin: 47 & 48)
+	#define sbusPort Serial2  	// Use Serial 5 for S-Bus (pin: 34 & 33)
+#endif
