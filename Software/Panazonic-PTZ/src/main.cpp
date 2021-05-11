@@ -28,6 +28,7 @@
 #include <FutabaSBUS.h>			// Provides S-Bus Capability
 #include <TaskScheduler.h>		// Adds Task Scheduler Support
 #include <UIPEthernet.h>		// Load Ethernet with TCP/UDP Support
+#include <Enc28J60Network.h>
 #include <boards.h>				// Defines Board Specific Peramators
 
 
@@ -45,8 +46,8 @@ bool sBusError = true;
 
 // Ethernet Client and MAC ID
 // char ptzIp[] = "teracom.proxy.beeceptor.com";
-char ptzIp[] = "192.168.0.47";
-int ptzPort = 51283; 
+char ptzIp[] = "192.168.0.12";
+int ptzPort = 80; 
 EthernetClient client;
 uint8_t mac[6] = {0x00,0x01,0x02,0x03,0x04,0x05};
 
@@ -110,7 +111,7 @@ void t2Callback();
 
 // Create Tasks
 Task t1(10, TASK_FOREVER, &t1Callback);
-Task t2(100, TASK_FOREVER, &t2Callback);
+Task t2(250, TASK_FOREVER, &t2Callback);
 Scheduler runner;
 
 // My Imports
@@ -261,6 +262,14 @@ bool ipSetup( bool c) {
 		} else {
 			#ifdef debug
 				DEBUG.println("DHCP Succes");
+				DEBUG.print("localIP: ");
+				DEBUG.println(Ethernet.localIP());
+				DEBUG.print("subnetMask: ");
+				DEBUG.println(Ethernet.subnetMask());
+				DEBUG.print("gatewayIP: ");
+				DEBUG.println(Ethernet.gatewayIP());
+				DEBUG.print("dnsServerIP: ");
+				DEBUG.println(Ethernet.dnsServerIP());
 			#endif
 			c = true;
 			break;
@@ -274,6 +283,7 @@ bool ipSetup( bool c) {
 bool serverSetup(bool c, String s) {
 	if (c == true) {
 		c = false;
+
 		for (size_t i = 0; i < 100; i++) {
 			if (client.connect(ptzIp,ptzPort)) {
 				#ifdef debug
@@ -299,17 +309,25 @@ bool serverSetup(bool c, String s) {
 }
 
 void sendPTZ(String cmd, String s) {
-	String str = "/cgi-bin/aw_ptz?cmd=%23" + cmd + "&res=1";
-	client.println("GET " + str + " HTTP/1.1");
-	client.println("Host: " + s);
-	client.println();
+	if (client.connected()) {
+		String str = "/cgi-bin/aw_ptz?cmd=%23" + cmd + "&res=1";
+		client.println("GET " + str + " HTTP/1.1");
+		client.println("Host: " + s);
+		// client.println("Connection: Keep-Alive");
+		// client.println("Keep-Alive: timeout=60, max=1000");
+		client.println();
+	}
 }
 
 void sendCam(String cmd, String s) {
-	String str = "/cgi-bin/aw_cam?cmd=" + cmd + "&res=1";
-	client.println("GET " + str + "&res=1 HTTP/1.1");
-	client.println("Host: " + s);
-	client.println();
+	if (client.connected()) {
+		String str = "/cgi-bin/aw_cam?cmd=" + cmd + "&res=1";
+		client.println("GET " + str + " HTTP/1.1");
+		client.println("Host: " + s);
+		// client.println("Connection: Keep-Alive");
+		// client.println("Keep-Alive: timeout=60, max=1000");
+		client.println();
+	}
 }
 
 
@@ -382,7 +400,7 @@ void frameError() {
 
 void ptzf_actions_rs422() {
 
-    byte pt_packet[] = {0x23, 'P', 'T', 'Z', pan1, pan2, tilt1, tilt2, 0x0D};
+    byte pt_packet[] = {0x23, 'P', 'T', 'S', pan1, pan2, tilt1, tilt2, 0x0D};
     RS422.write(pt_packet, sizeof(pt_packet));
 
     byte z_packet[] = {0x23, 'Z', zoom1, zoom2, 0x0D};
@@ -402,31 +420,38 @@ void ptzf_actions_rs422() {
 // Send Pan, Tilt, Zoom And Focus Data
 void ptzf_actions_ip(String x) {
 	// Create CMD Strings:
-	String cmd_PT= "PTZ" + String(panMap) + String(tiltMap);
+	String cmd_PT= "PTS" + String(panMap) + String(tiltMap);
 	String cmd_Z = "Z" + String(zoomMap);
 	String cmd_F = "F" + String(focusMap);
+	bool s = false;
 
-	if (PT_change == true) {
-		PT_change = false;
-		sendPTZ(cmd_PT, x);
+	while (s == false) {
+		if (client.connect(ptzIp,ptzPort)) {
+			s = true;
+
+			if (PT_change == true) {
+				PT_change = false;
+				sendPTZ(cmd_PT, x);
+			}
+
+			if (Z_change == true) {
+				Z_change = false;
+				sendPTZ(cmd_Z, x);
+			}
+
+			if (F_change == true) {
+				F_change = false;
+				sendPTZ(cmd_F, x);
+			}
+
+			#ifdef debugControlIP
+				DEBUG.print("Send over ID: ");
+				DEBUG.print(cmd_PT);
+				DEBUG.print(" | " + cmd_Z);
+				DEBUG.println(" | " + cmd_F);
+			#endif
+		}
 	}
-
-	if (Z_change == true) {
-		Z_change = false;
-		sendPTZ(cmd_Z, x);
-	}
-
-	if (F_change == true) {
-		F_change = false;
-		sendPTZ(cmd_F, x);
-	}
-
-	#ifdef debugControlIP
-		DEBUG.print("Send over ID: ");
-		DEBUG.print(cmd_PT);
-		DEBUG.print(" | " + cmd_Z);
-		DEBUG.println(" | " + cmd_F);
-	#endif
 }
 
 
@@ -470,12 +495,14 @@ void readData() {
 	#endif
 
 	#ifdef IP_Control
-		// while(client.connected()){
+		while(client.available()){
 			if(client.available()){
-			char c = client.read();
-			DEBUG.print(c);  
+				char c = client.read();
+				#ifdef debugControlIP
+				DEBUG.print(c);
+				#endif
 			}
-		// }
+		}		
 	#endif
 
 }
@@ -487,6 +514,7 @@ void readData() {
 // ||=======================================================||
 
 void setup() {
+	digitalWrite(13, LOW);
 	DEBUG.begin(115200);	// Start Debug Serial Port (USB)
 	#ifdef RS422_Control
 		RS422.begin(9600);	    // Start RS422 Serial Port
@@ -525,6 +553,7 @@ void setup() {
 	t2.enable();
 	DEBUG.println("Enabled t2");
 
+	digitalWrite(13, HIGH);
 	DEBUG.println("Ready");
 }
 
@@ -536,6 +565,7 @@ void setup() {
 
 void loop() {
 	runner.execute(); // Update Runner
+	Ethernet.maintain();
 	readData(); // Read Serial / data
 }
 
